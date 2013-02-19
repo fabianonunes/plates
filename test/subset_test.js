@@ -1,5 +1,4 @@
 /*global describe,it, beforeEach*/
-var should = require('should')
 var subsetSum = require('../alternative.js')
 
 describe('accessory operations', function () {
