@@ -1,5 +1,5 @@
 /*global describe,it, beforeEach*/
-var subsetSum = require('../alternative.js')
+var subsetSum = require('../subset.js')
 
 describe('accessory operations', function () {
   describe('#indexesOf', function () {
