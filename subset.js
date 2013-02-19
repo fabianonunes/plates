@@ -1,70 +1,9 @@
-var subsetSum = function(items, target) {
-		"use strict";
-		var perms = []
-		var layer = 0
-		var depth = 35
-		var attempts = 5
-		var sum
-		var perm
-		var ss = function(items) {
-				var item = items.shift();
-				for(var i = 0; i < items.length; i=i+1) {
-					attempts = attempts + 1;
-					if(attempts <= items.length * items.length) {
-						if(layer === 0) {
-							perm = [items[0], items[i]];
-						} else {
-							perm = perms.shift();
-							perm.push(items[0]);
-						}
-						sum = 0;
-						for(var j = 0; j < perm.length; j=j+1) {
-							sum += perm[j];
-						}
-						perms.push(perm);
-						if(sum == target) {
-							return perm;
-						}
-					} else {
-						if(layer < depth) {
-							attempts = 0;
-							layer = layer + 1;
-						} else {
-							return null;
-						}
-					}
-				}
-				items.push(item);
-				return ss(items);
-			};
-		return ss(items);
-	}
-var getCombinations = function(list) {
-		var combinations = []; //All combinations
-		var combination = []; //Single combination
-		var quantity = (1 << list.length);
-		for(var i = 0; i < quantity; i=i+1) {
-			combination = [];
-			for(var j = 0; j < list.length; j=j+1) {
-				if((i & (1 << j))) {
-					combination.push(list[j]);
-				}
-			}
-			if(combination.length !== 0) {
-				combinations.push(combination);
-			}
-		}
-		return combinations;
-	}
-var listSum = function(list) {
-		var product = 0;
-		for(var i = 0; i < list.length; i=i+1) {
-			product += list[i];
-		}
-		return product;
-	}
+/*global window*/
 var _sorter = function(a, b) {
-		return a > b ? 1 : -1
+		return a * 1 > b * 1 ? 1 : -1
+	}
+var _reverser = function(a, b) {
+		return a * 1 > b * 1 ? -1 : 1
 	}
 var indexesOf = function(array, values) {
 		var holder = {}
@@ -81,52 +20,101 @@ var removeOnceAndExactly = function(array, values) {
 		if(_indexesOf.indexOf(-1) == -1) {
 			_indexesOf.sort(_sorter).forEach(function(value) {
 				copy.splice(value + i, 1)
-				i = i-1
+				i = i - 1
 			})
 			return copy
 		} else {
-			return false
+			return array
 		}
 	}
-var simplifyList = function(result, bars) {
-		var combinations = getCombinations(result).filter(function(line) {
-			return line.length > 1
-		})
-		var sumOfAll = combinations.map(function(line) {
-			return listSum(line)
-		})
-		bars.forEach(function(v) {
-			sumOfAll.map(function(value, index, me) {
-				return(value == v) ? index : null
-			}).forEach(function(index) {
-				if(!index) {
-					return;
+var sum = function(array) {
+		return array ? array.reduce(function(memo, num) {
+			return parseFloat(num) + memo
+		}, 0) : 0
+	}
+var subsets = function(array, block, skip) {
+		var control;
+		var _subsets = function(array, skip, block) {
+				skip = skip || 0
+				if (block(array)) { return true }
+				if (!array) { return }
+				for (var i = array.length - 1; i >= skip; i = i - 1) {
+					if (!control) {
+						var first = array.slice(0)
+						var second = first.splice(i).splice(1)
+						control = _subsets(first.concat(second), i, block) ? true : control
+					}
 				}
-				var copy = removeOnceAndExactly(result, combinations[index])
-				if(copy) {
-					result = copy
-					result.push(v)
+			}
+		return _subsets(array, skip, block)
+	}
+
+var subset_sum = function(values, want) {
+
+		var sums     = {},
+			comb       = {},
+			l          = Math.floor(values.length / 2),
+			sum_subset = null,
+			first      = values.slice(0, l),
+			second     = values.slice(l)
+
+			//calculate a subset sum to want value
+			subsets(first, function(subset) {
+				sums[sum(subset)] = subset
+			})
+
+			if (!(sum_subset = sums[want])) {
+				subsets(second, function(subset) {
+					var snd_half = sums[want - sum(subset)]
+					if(snd_half) {
+						sum_subset = snd_half.concat(subset)
+						return sum_subset
+					}
+				})
+			}
+
+			// calculate the sum of all combinations
+			subsets(sum_subset, function(subset) {
+				if(subset && subset.length) {
+					var sum_of_all = sum(subset)
+					if(values.indexOf(sum_of_all) != -1) {
+						(comb[sum_of_all] || (comb[sum_of_all] = [])).push(subset)
+					}
 				}
 			})
 
-		})
-		return result
+			// optimize the combinations: choose greater values when possible
+			Object.keys(comb).sort(_reverser).forEach(function(key) {
+				key = key * 1
+				comb[key].forEach(function(set) {
+					var copy = removeOnceAndExactly(sum_subset, set)
+					if(copy) {
+						(sum_subset = copy).push(key)
+					}
+				})
+			})
+
+			return sum_subset// ? sum_subset.sort(_sorter).reverse() : []
+
 	}
-var distributePlates = function(bars, target) {
-		for(var i = 0; i <= 1; i=i+1) {
-			bars = bars.concat(bars)
+var distributePlates = function(bars, target, filled) {
+		var result = []
+		bars = bars.concat(bars)
+		if(filled) {
+			target = target - sum(filled)
+			result = result.concat(filled)
 		}
-		var result = subsetSum(bars.slice(0), target)
-		if(result !== null) {
-			result = result.sort(_sorter)
-			return simplifyList(result, bars)
-		} else {
-			return null
-		}
+		return result.concat(subset_sum(bars, target))
 	}
 
 module.exports = {
-	indexesOf: indexesOf,
-	removeOnceAndExactly: removeOnceAndExactly,
+	subsets : subsets,
+	sum : sum,
+	_sorter : _sorter,
+	_reverser : _reverser,
+	indexesOf : indexesOf,
+	removeOnceAndExactly : removeOnceAndExactly,
+	subset_sum : subset_sum,
 	distributePlates : distributePlates
 }
+
